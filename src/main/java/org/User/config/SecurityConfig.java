@@ -14,7 +14,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Mở chính xác endpoint đăng ký
-                        .requestMatchers("/api/v1/users/register").permitAll()
+                        .requestMatchers("/api/v1/users/register","/api/v1/users/login").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         // Các request còn lại mới cần xác thực
                         .anyRequest().authenticated()

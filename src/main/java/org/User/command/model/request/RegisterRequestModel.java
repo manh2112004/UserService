@@ -1,4 +1,4 @@
-package org.User.command.model;
+package org.User.command.model.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
