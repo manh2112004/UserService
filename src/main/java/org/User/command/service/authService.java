@@ -13,4 +13,6 @@ public interface authService {
     Map<String,Object>refreshToken(String refreshToken);
     void logout(String refreshToken);
     void verifyEmailInKeycloak(String userId);
+    String findUserIdByEmail(String email);
+    void updatePasswordInKeycloak(String userId,String newPassword);
 }

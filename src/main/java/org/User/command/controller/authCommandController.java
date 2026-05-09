@@ -1,10 +1,9 @@
 package org.User.command.controller;
 import jakarta.validation.Valid;
+import org.User.command.command.ForgotPasswordCommand;
+import org.User.command.command.ResetPasswordCommand;
 import org.User.command.command.VerifyEmailCommand;
-import org.User.command.model.request.LoginRequestModel;
-import org.User.command.model.request.RefreshTokenRequest;
-import org.User.command.model.request.RegisterRequestModel;
-import org.User.command.model.request.VerifyEmailRequest;
+import org.User.command.model.request.*;
 import org.User.command.model.response.LoginResponseDTO;
 import org.User.command.service.authService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
@@ -62,6 +61,25 @@ public class authCommandController {
     public CompletableFuture<String> verifyEmail(@RequestBody VerifyEmailRequest request) {
         return commandGateway.send(new VerifyEmailCommand(request.getUserId()))
                 .thenApply(it -> "Xác thực email thành công!")
+                .exceptionally(e -> "Lỗi: " + e.getMessage());
+    }
+    @PostMapping("/forgot-password")
+    public CompletableFuture<String> forgotPassword(@RequestParam String email) {
+        // 1. Tìm userId từ email thông qua AuthService (gọi Keycloak/DB)
+        String userId = authService.findUserIdByEmail(email);
+
+        if (userId == null) {
+            return CompletableFuture.completedFuture("Email không tồn tại!");
+        }
+        // 2. Gửi Command bằng userId thay vì email
+        return commandGateway.send(new ForgotPasswordCommand(userId, email))
+                .thenApply(it -> "Yêu cầu đã được tiếp nhận!")
+                .exceptionally(e -> "Lỗi: " + e.getMessage());
+    }
+    @PostMapping("/reset-password")
+    public CompletableFuture<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        return commandGateway.send(new ResetPasswordCommand(request.getUserId(), request.getNewPassword()))
+                .thenApply(it -> "Đặt lại mật khẩu thành công!")
                 .exceptionally(e -> "Lỗi: " + e.getMessage());
     }
 }

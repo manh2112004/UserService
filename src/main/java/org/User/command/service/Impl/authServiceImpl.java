@@ -19,6 +19,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 @Service
@@ -165,5 +166,23 @@ public class authServiceImpl implements authService {
         } catch (Exception e) {
             throw new RuntimeException("Keycloak error: " + e.getMessage());
         }
+    }
+
+    @Override
+    public String findUserIdByEmail(String email) {
+        List<UserRepresentation> users = keycloak.realm(realm).users().search(null, null, null, email, 0, 1);
+        return users.isEmpty() ? null : users.get(0).getId();
+    }
+
+    @Override
+    public void updatePasswordInKeycloak(String userId, String newPassword) {
+        UserResource userResource = keycloak.realm(realm).users().get(userId);
+
+        CredentialRepresentation cred = new CredentialRepresentation();
+        cred.setType(CredentialRepresentation.PASSWORD);
+        cred.setValue(newPassword);
+        cred.setTemporary(false); // Người dùng không cần đổi lại lần nữa khi đăng nhập
+
+        userResource.resetPassword(cred);
     }
 }

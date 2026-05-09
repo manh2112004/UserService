@@ -2,7 +2,11 @@ package org.User.command.aggregate;
 
 import lombok.NoArgsConstructor;
 import org.User.command.command.CreateUserCommand;
+import org.User.command.command.ForgotPasswordCommand;
+import org.User.command.command.ResetPasswordCommand;
 import org.User.command.command.VerifyEmailCommand;
+import org.User.command.event.PasswordResetConfirmedEvent;
+import org.User.command.event.PasswordResetRequestedEvent;
 import org.User.command.event.UserCreatedEvent;
 import org.User.command.event.UserEmailVerifiedEvent;
 import org.User.command.service.authService;
@@ -11,6 +15,8 @@ import org.axonframework.eventsourcing.EventSourcingHandler;
 import org.axonframework.modelling.command.AggregateIdentifier;
 import org.axonframework.modelling.command.AggregateLifecycle;
 import org.axonframework.spring.stereotype.Aggregate;
+
+import java.util.UUID;
 
 @Aggregate
 @NoArgsConstructor
@@ -41,6 +47,40 @@ public class authAggregate {
 
         // 3. Nếu thành công, áp dụng Event để lưu vào Event Store
         AggregateLifecycle.apply(new UserEmailVerifiedEvent(command.getUserId()));
+    }
+    // 1. Xử lý Forgot Password
+    @CommandHandler
+    public void handle(ForgotPasswordCommand command, authService authService) {
+        String foundUserId = authService.findUserIdByEmail(command.getEmail());
+
+        if (foundUserId == null) {
+            throw new IllegalArgumentException("Email không tồn tại trong hệ thống!");
+        }
+
+        // Tạo mã reset ngẫu nhiên
+        String resetCode = java.util.UUID.randomUUID().toString();
+
+        // Phát event để các service khác (như Mail Service) xử lý
+        AggregateLifecycle.apply(new PasswordResetRequestedEvent(
+                foundUserId,
+                command.getEmail(),
+                resetCode
+        ));
+    }
+    // Xử lý Đặt lại mật khẩu mới
+    @CommandHandler
+    public void handle(ResetPasswordCommand command, authService authService) {
+        // 1. Cập nhật trực tiếp lên Keycloak
+        authService.updatePasswordInKeycloak(command.getUserId(), command.getNewPassword());
+
+        // 2. Lưu sự kiện xác nhận đổi mật khẩu vào Event Store
+        AggregateLifecycle.apply(new PasswordResetConfirmedEvent(command.getUserId()));
+    }
+
+    @EventSourcingHandler
+    public void on(PasswordResetRequestedEvent event) {
+        this.userId = event.getUserId();
+        this.email = event.getEmail();
     }
     @EventSourcingHandler
     public void on(UserCreatedEvent event) {
