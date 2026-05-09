@@ -14,14 +14,12 @@ public class UserEventsHandler {
     private UserRepository userRepository;
     @EventHandler
     public void on(UserCreatedEvent event) {
-        // Tạo Entity để lưu vào MySQL
         User userEntity = new User();
         userEntity.setId(event.getUserId()); // Dùng ID từ Keycloak
         userEntity.setUsername(event.getUsername());
         userEntity.setEmail(event.getEmail());
         userEntity.setUserType(event.getUserType());
-        userEntity.setKeycloakUid(event.getUserId()); // Gán ID từ Keycloak vào cột keycloak_uid
-        // Lưu ý: Không nên lưu password clear-text vào DB này nếu đã có Keycloak
+        userEntity.setKeycloakUid(event.getUserId());
         userRepository.save(userEntity);
     }
 }

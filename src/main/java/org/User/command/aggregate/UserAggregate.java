@@ -19,8 +19,6 @@ public class UserAggregate {
     private String userType;
     @CommandHandler
     public UserAggregate(CreateUserCommand command) {
-        // Bạn có thể thêm logic kiểm tra ở đây (ví dụ: email không được trống)
-        // Phát ra sự kiện UserCreatedEvent
         AggregateLifecycle.apply(UserCreatedEvent.builder()
                 .userId(command.getUserId())
                 .username(command.getFullName())
