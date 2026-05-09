@@ -1,10 +1,13 @@
 package org.User.command.controller;
 import jakarta.validation.Valid;
+import org.User.command.command.VerifyEmailCommand;
 import org.User.command.model.request.LoginRequestModel;
 import org.User.command.model.request.RefreshTokenRequest;
 import org.User.command.model.request.RegisterRequestModel;
+import org.User.command.model.request.VerifyEmailRequest;
 import org.User.command.model.response.LoginResponseDTO;
 import org.User.command.service.authService;
+import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +17,12 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
-    @RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1/auth")
 public class authCommandController {
     @Autowired
     private authService authService;
+    @Autowired
+    private  CommandGateway commandGateway;
 
     @PostMapping("/register")
     public CompletableFuture<String> register(@Valid @RequestBody RegisterRequestModel model) {
@@ -52,5 +57,11 @@ public class authCommandController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
+    }
+    @PostMapping("/verify-email")
+    public CompletableFuture<String> verifyEmail(@RequestBody VerifyEmailRequest request) {
+        return commandGateway.send(new VerifyEmailCommand(request.getUserId()))
+                .thenApply(it -> "Xác thực email thành công!")
+                .exceptionally(e -> "Lỗi: " + e.getMessage());
     }
 }

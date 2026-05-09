@@ -17,7 +17,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout").permitAll()
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/verify-email").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         // Các request còn lại mới cần xác thực
                         .anyRequest().authenticated()

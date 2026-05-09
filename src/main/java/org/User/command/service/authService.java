@@ -12,4 +12,5 @@ public interface authService {
     LoginResponseDTO login(LoginRequestModel model);
     Map<String,Object>refreshToken(String refreshToken);
     void logout(String refreshToken);
+    void verifyEmailInKeycloak(String userId);
 }

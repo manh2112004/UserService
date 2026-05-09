@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class UserEventsHandler {
+public class authEventsHandler {
     @Autowired
     private UserRepository userRepository;
     @EventHandler
@@ -21,5 +21,12 @@ public class UserEventsHandler {
         userEntity.setUserType(event.getUserType());
         userEntity.setKeycloakUid(event.getUserId());
         userRepository.save(userEntity);
+    }
+    @EventHandler
+    public void on(UserEmailVerifiedEvent event) {
+        userRepository.findById(event.getUserId()).ifPresent(user -> {
+            user.setActive(true);
+            userRepository.save(user);
+        });
     }
 }

@@ -7,6 +7,7 @@ import org.User.command.model.response.LoginResponseDTO;
 import org.User.command.service.authService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -151,6 +152,18 @@ public class authServiceImpl implements authService {
         } catch (Exception e) {
             System.err.println("Lỗi Logout Keycloak: " + e.getMessage());
             throw new RuntimeException("Không thể đăng xuất, vui lòng thử lại!");
+        }
+    }
+
+    @Override
+    public void verifyEmailInKeycloak(String userId) {
+        try {
+            UserResource userResource = keycloak.realm(realm).users().get(userId);
+            UserRepresentation user = userResource.toRepresentation();
+            user.setEmailVerified(true);
+            userResource.update(user);
+        } catch (Exception e) {
+            throw new RuntimeException("Keycloak error: " + e.getMessage());
         }
     }
 }

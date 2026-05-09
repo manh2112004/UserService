@@ -33,7 +33,7 @@ public class User {
     private String userType; // Lưu giá trị "CANDIDATE" hoặc "RECRUITER"
 
     @Builder.Default
-    private boolean isActive = true;
+    private boolean isActive = false;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
