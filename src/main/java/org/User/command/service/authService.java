@@ -11,4 +11,5 @@ public interface authService {
     CompletableFuture<String> registerUser(RegisterRequestModel model);
     LoginResponseDTO login(LoginRequestModel model);
     Map<String,Object>refreshToken(String refreshToken);
+    void logout(String refreshToken);
 }

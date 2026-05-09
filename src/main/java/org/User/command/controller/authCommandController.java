@@ -39,4 +39,18 @@ public class authCommandController {
         // Trả về trực tiếp object chứa access_token, refresh_token, expires_in...
         return ResponseEntity.ok(tokens);
     }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            return ResponseEntity.badRequest().body("Refresh token là bắt buộc để đăng xuất");
+        }
+
+        try {
+            authService.logout(refreshToken);
+            return ResponseEntity.ok("Đăng xuất thành công và đã hủy phiên làm việc trên Keycloak");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
 }

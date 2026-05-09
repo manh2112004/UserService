@@ -103,7 +103,7 @@ public class authServiceImpl implements authService {
     }
 
     @Override
-    public Map<String, Object> refreshToken(String refreshToken) {
+        public Map<String, Object> refreshToken(String refreshToken) {
         String url = "http://localhost:8080/realms/jobhunt/protocol/openid-connect/token";
 
         RestTemplate restTemplate = new RestTemplate();
@@ -124,6 +124,33 @@ public class authServiceImpl implements authService {
         } catch (Exception e) {
             System.out.println("Keycloak error: " + e.getMessage());
             throw new RuntimeException("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
+    }
+
+    @Override
+    public void logout(String refreshToken) {
+        // 1. Tạo URL logout của Keycloak
+        String url = keycloakServerUrl + "/realms/" + realm + "/protocol/openid-connect/logout";
+
+        // 2. Thiết lập Header
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        // 3. Thiết lập Body (Chứa client_id, client_secret và refresh_token)
+        MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+        map.add("client_id", clientId);
+        map.add("client_secret", clientSecret);
+        map.add("refresh_token", refreshToken);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
+
+        try {
+            // 4. Gọi đến Keycloak để hủy Session
+            restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Logout thành công trên Keycloak");
+        } catch (Exception e) {
+            System.err.println("Lỗi Logout Keycloak: " + e.getMessage());
+            throw new RuntimeException("Không thể đăng xuất, vui lòng thử lại!");
         }
     }
 }
