@@ -1,14 +1,8 @@
 package org.User.command.aggregate;
 
 import lombok.NoArgsConstructor;
-import org.User.command.command.CreateUserCommand;
-import org.User.command.command.ForgotPasswordCommand;
-import org.User.command.command.ResetPasswordCommand;
-import org.User.command.command.VerifyEmailCommand;
-import org.User.command.event.PasswordResetConfirmedEvent;
-import org.User.command.event.PasswordResetRequestedEvent;
-import org.User.command.event.UserCreatedEvent;
-import org.User.command.event.UserEmailVerifiedEvent;
+import org.User.command.command.*;
+import org.User.command.event.*;
 import org.User.command.service.authService;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
@@ -27,6 +21,7 @@ public class authAggregate {
     private String email;
     private String userType;
     private boolean emailVerified;
+    private boolean isActive;
     @CommandHandler
     public authAggregate(CreateUserCommand command) {
         AggregateLifecycle.apply(UserCreatedEvent.builder()
@@ -38,13 +33,10 @@ public class authAggregate {
     }
     @CommandHandler
     public void handle(VerifyEmailCommand command, authService authService) {
-        // 1. Kiểm tra nghiệp vụ (Invariants)
         if (this.emailVerified) {
             throw new IllegalStateException("Email này đã được xác thực trước đó!");
         }
-        // 2. Gọi Service để thực thi với Keycloak
         authService.verifyEmailInKeycloak(command.getUserId());
-
         // 3. Nếu thành công, áp dụng Event để lưu vào Event Store
         AggregateLifecycle.apply(new UserEmailVerifiedEvent(command.getUserId()));
     }
@@ -76,7 +68,22 @@ public class authAggregate {
         // 2. Lưu sự kiện xác nhận đổi mật khẩu vào Event Store
         AggregateLifecycle.apply(new PasswordResetConfirmedEvent(command.getUserId()));
     }
-
+    @CommandHandler
+    public void handle(ResendVerificationCommand command) {
+        // Kiểm tra trạng thái hiện tại của User trong Aggregate
+        // Nếu isActive đã là true (đã xác thực rồi) thì không cho gửi lại nữa
+        if (this.isActive) {
+            throw new IllegalStateException("Tài khoản này đã được xác thực trước đó rồi!");
+        }
+        // Tạo mã xác thực mới (ví dụ 6 số hoặc UUID)
+        String newCode = java.util.UUID.randomUUID().toString();
+        // Bắn sự kiện để Notification Service xử lý việc gửi Mail thực tế
+        AggregateLifecycle.apply(new VerificationEmailResentEvent(
+                command.getUserId(),
+                command.getEmail(),
+                newCode
+        ));
+    }
     @EventSourcingHandler
     public void on(PasswordResetRequestedEvent event) {
         this.userId = event.getUserId();

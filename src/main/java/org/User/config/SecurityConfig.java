@@ -20,7 +20,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/verify-email",
                                 "/api/v1/auth/forgot-password",
-                                "/api/v1/auth/reset-password").permitAll()
+                                "/api/v1/auth/reset-password",
+                                "/api/v1/auth/resend-verification").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         // Các request còn lại mới cần xác thực
                         .anyRequest().authenticated()

@@ -1,6 +1,7 @@
 package org.User.command.controller;
 import jakarta.validation.Valid;
 import org.User.command.command.ForgotPasswordCommand;
+import org.User.command.command.ResendVerificationCommand;
 import org.User.command.command.ResetPasswordCommand;
 import org.User.command.command.VerifyEmailCommand;
 import org.User.command.model.request.*;
@@ -80,6 +81,18 @@ public class authCommandController {
     public CompletableFuture<String> resetPassword(@RequestBody ResetPasswordRequest request) {
         return commandGateway.send(new ResetPasswordCommand(request.getUserId(), request.getNewPassword()))
                 .thenApply(it -> "Đặt lại mật khẩu thành công!")
+                .exceptionally(e -> "Lỗi: " + e.getMessage());
+    }
+    @PostMapping("/resend-verification")
+    public CompletableFuture<String> resendVerification(@RequestParam String email) {
+        // 1. Tìm userId từ email
+        String userId = authService.findUserIdByEmail(email);
+        if (userId == null) {
+            return CompletableFuture.completedFuture("Email không tồn tại trong hệ thống!");
+        }
+        // 2. Gửi lệnh yêu cầu gửi lại mail
+        return commandGateway.send(new ResendVerificationCommand(userId, email))
+                .thenApply(it -> "Mã xác thực mới đã được gửi vào email của bạn.")
                 .exceptionally(e -> "Lỗi: " + e.getMessage());
     }
 }
