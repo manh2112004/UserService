@@ -3,6 +3,7 @@ package org.User.command.event;
 import lombok.RequiredArgsConstructor;
 import org.User.command.data.User;
 import org.User.command.data.UserRepository;
+import org.User.constant.UserType;
 import org.axonframework.eventhandling.EventHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -18,7 +19,7 @@ public class authEventsHandler {
         userEntity.setId(event.getUserId()); // Dùng ID từ Keycloak
         userEntity.setUsername(event.getUsername());
         userEntity.setEmail(event.getEmail());
-        userEntity.setUserType(event.getUserType());
+        userEntity.setUserType(UserType.valueOf(event.getUserType()));
         userEntity.setKeycloakUid(event.getUserId());
         userRepository.save(userEntity);
     }

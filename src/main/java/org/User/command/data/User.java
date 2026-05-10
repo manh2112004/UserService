@@ -1,6 +1,7 @@
 package org.User.command.data;
 import jakarta.persistence.*;
 import lombok.*;
+import org.User.constant.UserType;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -25,12 +26,16 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    private String phoneNumber;
+
+    private String avatarUrl; // Lưu URL từ S3/Cloudinary
 
     @Column(name = "keycloak_uid", unique = true)
     private String keycloakUid;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "user_type", nullable = false)
-    private String userType; // Lưu giá trị "CANDIDATE" hoặc "RECRUITER"
+    private UserType userType;
 
     @Builder.Default
     private boolean isActive = false;
