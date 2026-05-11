@@ -3,6 +3,7 @@ package org.User.command.service.Impl;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
+import org.User.command.command.UpdateUserAvatarCommand;
 import org.User.command.command.UpdateUserCommand;
 import org.User.command.data.UserRepository;
 import org.User.command.model.request.UserUpdateRequest;
@@ -51,5 +52,28 @@ public class UserServiceImpl implements userService {
                 throw new RuntimeException("Lỗi khi tải ảnh lên Cloudinary: " + e.getMessage());
             }
         });
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteAvatar(String userId) {
+        // 1. Tìm user để lấy URL avatar hiện tại
+        return CompletableFuture.runAsync(() -> {
+            userRepository.findById(userId).ifPresent(user -> {
+                String url = user.getAvatarUrl();
+                if (url != null && !url.isEmpty()) {
+                    try {
+                        // 2. Trích xuất Public ID từ URL Cloudinary để xóa
+                        // Ví dụ: http://res.cloudinary.com/demo/image/upload/v1234/sample.jpg -> sample
+                        String publicId = url.substring(url.lastIndexOf("/") + 1, url.lastIndexOf("."));
+                        cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+                    } catch (IOException e) {
+                        throw new RuntimeException("Không thể xóa ảnh trên Cloudinary");
+                    }
+                }
+            });
+        }).thenCompose(result -> {
+            // 3. Gửi Command để set avatarUrl về null trong DB và Aggregate
+            return commandGateway.send(new UpdateUserAvatarCommand(userId, null));
+        }).thenAccept(result -> {});
     }
 }

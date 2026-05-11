@@ -8,4 +8,5 @@ import java.util.concurrent.CompletableFuture;
 public interface userService {
     CompletableFuture<String>updateUser(String userId, UserUpdateRequest request);
     CompletableFuture<String> uploadImage(MultipartFile file);
+    CompletableFuture<Void> deleteAvatar(String userId);
 }

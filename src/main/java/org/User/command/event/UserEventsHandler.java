@@ -27,4 +27,5 @@ public class UserEventsHandler {
             userRepository.save(user);
         });
     }
+
 }

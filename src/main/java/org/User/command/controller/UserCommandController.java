@@ -42,4 +42,11 @@ public class UserCommandController {
                                 .thenApply(result -> ResponseEntity.ok(url))
                 );
     }
+    @DeleteMapping("/me/avatar")
+    public CompletableFuture<ResponseEntity<String>> deleteAvatar(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return userService.deleteAvatar(jwt.getSubject())
+                .thenApply(result -> ResponseEntity.ok("Đã xóa ảnh đại diện thành công!"));
+    }
 }

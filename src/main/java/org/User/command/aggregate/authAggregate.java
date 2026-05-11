@@ -144,4 +144,5 @@ public class authAggregate {
         this.userId = event.getUserId();
         this.avatarUrl = event.getAvatarUrl();
     }
+
 }
