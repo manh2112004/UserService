@@ -16,4 +16,10 @@ public interface UserRepository extends JpaRepository<User,String> {
 
     // Tìm kiếm theo Keycloak UID (trong trường hợp bạn cần truy vấn ngược)
     Optional<User> findByKeycloakUid(String keycloakUid);
+
+    // Kiểm tra email đã tồn tại ở một User KHÁC (không phải ID hiện tại)
+    boolean existsByEmailAndIdNot(String email, String id);
+
+    // Kiểm tra số điện thoại đã tồn tại ở một User KHÁC
+    boolean existsByPhoneNumberAndIdNot(String phoneNumber, String id);
 }
