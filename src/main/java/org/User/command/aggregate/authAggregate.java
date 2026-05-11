@@ -20,6 +20,7 @@ public class authAggregate {
     private String fullName;
     private String email;
     private String phone_number;
+    private String avatarUrl;
     private String userType;
     private boolean emailVerified;
     private boolean isActive;
@@ -105,6 +106,14 @@ public class authAggregate {
                 )
         );
     }
+    @CommandHandler
+    public void handle(UpdateUserAvatarCommand command) {
+        // Bắn sự kiện ra hệ thống
+        AggregateLifecycle.apply(new UserAvatarUpdatedEvent(
+                command.getUserId(),
+                command.getAvatarUrl()
+        ));
+    }
     @EventSourcingHandler
     public void on(PasswordResetRequestedEvent event) {
         this.userId = event.getUserId();
@@ -129,5 +138,10 @@ public class authAggregate {
         this.fullName = event.getUsername();
         this.phone_number = event.getPhoneNumber();
         this.email = event.getEmail();
+    }
+    @EventSourcingHandler
+    public void on(UserAvatarUpdatedEvent event) {
+        this.userId = event.getUserId();
+        this.avatarUrl = event.getAvatarUrl();
     }
 }

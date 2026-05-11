@@ -20,4 +20,11 @@ public class UserEventsHandler {
             userRepository.save(user);
         });
     }
+    @EventHandler
+    public void on(UserAvatarUpdatedEvent event){
+        userRepository.findById(event.getUserId()).ifPresent(user -> {
+            user.setAvatarUrl(event.getAvatarUrl());
+            userRepository.save(user);
+        });
+    }
 }
