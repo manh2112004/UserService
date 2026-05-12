@@ -21,14 +21,8 @@ public class User {
     private String id;
 
     @Column(unique = true, nullable = false)
-    private String username;
-
-    @Column(unique = true, nullable = false)
     private String email;
 
-    private String phoneNumber;
-
-    private String avatarUrl; // Lưu URL từ S3/Cloudinary
 
     @Column(name = "keycloak_uid", unique = true)
     private String keycloakUid;

@@ -28,7 +28,6 @@ public class authAggregate {
     public authAggregate(CreateUserCommand command) {
         AggregateLifecycle.apply(UserCreatedEvent.builder()
                 .userId(command.getUserId())
-                .username(command.getFullName())
                 .email(command.getEmail())
                 .userType(command.getUserType())
                 .build());
@@ -86,34 +85,6 @@ public class authAggregate {
                 newCode
         ));
     }
-    @CommandHandler
-    public void handle(UpdateUserCommand command) {
-        if (command.getEmail() == null || !command.getEmail().contains("@")) {
-            throw new IllegalArgumentException("Email không hợp lệ!");
-        }
-
-        if (command.getPhoneNumber() == null ||
-                !command.getPhoneNumber().matches("\\d{10}")) {
-            throw new IllegalArgumentException("Số điện thoại phải bao gồm 10 chữ số!");
-        }
-
-        AggregateLifecycle.apply(
-                new UserUpdatedEvent(
-                        command.getUserId(),
-                        command.getUsername(),
-                        command.getPhoneNumber(),
-                        command.getEmail()
-                )
-        );
-    }
-    @CommandHandler
-    public void handle(UpdateUserAvatarCommand command) {
-        // Bắn sự kiện ra hệ thống
-        AggregateLifecycle.apply(new UserAvatarUpdatedEvent(
-                command.getUserId(),
-                command.getAvatarUrl()
-        ));
-    }
     @EventSourcingHandler
     public void on(PasswordResetRequestedEvent event) {
         this.userId = event.getUserId();
@@ -131,18 +102,6 @@ public class authAggregate {
     public void on(UserEmailVerifiedEvent event) {
         this.userId = event.getUserId();
         this.emailVerified = true; // Cập nhật trạng thái Aggregate
-    }
-    @EventSourcingHandler
-    public void on(UserUpdatedEvent event) {
-        this.userId = event.getId();
-        this.fullName = event.getUsername();
-        this.phone_number = event.getPhoneNumber();
-        this.email = event.getEmail();
-    }
-    @EventSourcingHandler
-    public void on(UserAvatarUpdatedEvent event) {
-        this.userId = event.getUserId();
-        this.avatarUrl = event.getAvatarUrl();
     }
 
 }

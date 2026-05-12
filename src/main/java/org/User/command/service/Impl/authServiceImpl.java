@@ -16,6 +16,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -50,7 +51,6 @@ public class authServiceImpl implements authService {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(model.getEmail());
         user.setEmail(model.getEmail());
-        user.setFirstName(model.getFullName());
         user.setEnabled(true);
         user.setEmailVerified(true);
         user.setRequiredActions(Collections.emptyList());
@@ -74,7 +74,6 @@ public class authServiceImpl implements authService {
         // 4. Gửi Command sang Axon
         CreateUserCommand command = new CreateUserCommand(
                 keycloakUserId,
-                model.getFullName(),
                 model.getEmail(),
                 model.getUserType()
         );
@@ -95,11 +94,11 @@ public class authServiceImpl implements authService {
         body.add("password", model.getPassword());
 
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-
         try {
             ResponseEntity<LoginResponseDTO> response = restTemplate.postForEntity(url, entity, LoginResponseDTO.class);
             return response.getBody();
-        } catch (Exception e) {
+        } catch (HttpClientErrorException e) {
+            System.err.println("Chi tiết lỗi Keycloak: " + e.getResponseBodyAsString());
             throw new RuntimeException("Sai tài khoản hoặc mật khẩu!");
         }
     }

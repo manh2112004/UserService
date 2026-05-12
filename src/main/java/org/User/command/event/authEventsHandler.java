@@ -17,7 +17,6 @@ public class authEventsHandler {
     public void on(UserCreatedEvent event) {
         User userEntity = new User();
         userEntity.setId(event.getUserId()); // Dùng ID từ Keycloak
-        userEntity.setUsername(event.getUsername());
         userEntity.setEmail(event.getEmail());
         userEntity.setUserType(UserType.valueOf(event.getUserType()));
         userEntity.setKeycloakUid(event.getUserId());

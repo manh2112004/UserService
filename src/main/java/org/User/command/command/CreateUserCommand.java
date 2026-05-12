@@ -11,7 +11,6 @@ import org.axonframework.modelling.command.TargetAggregateIdentifier;
 public class CreateUserCommand {
     @TargetAggregateIdentifier
     private String userId; // keycloakUserId sẽ truyền vào đây
-    private String fullName;
     private String email;
     private String userType;
 }

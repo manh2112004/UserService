@@ -8,8 +8,6 @@ public interface UserRepository extends JpaRepository<User,String> {
     // Tìm kiếm người dùng theo Email (hữu ích cho việc kiểm tra trùng lặp hoặc đăng nhập)
     Optional<User> findByEmail(String email);
 
-    // Tìm kiếm theo username
-    Optional<User> findByUsername(String username);
 
     // Kiểm tra xem email đã tồn tại hay chưa
     boolean existsByEmail(String email);
@@ -19,7 +17,4 @@ public interface UserRepository extends JpaRepository<User,String> {
 
     // Kiểm tra email đã tồn tại ở một User KHÁC (không phải ID hiện tại)
     boolean existsByEmailAndIdNot(String email, String id);
-
-    // Kiểm tra số điện thoại đã tồn tại ở một User KHÁC
-    boolean existsByPhoneNumberAndIdNot(String phoneNumber, String id);
 }
