@@ -12,12 +12,12 @@ public class AxonConfig {
     @Bean
     @Primary
     public Serializer jacksonSerializer(ObjectMapper objectMapper) {
-        // Cấu hình ObjectMapper để xử lý tốt các Java 8 Date/Time và các kiểu dữ liệu mới
-        objectMapper.findAndRegisterModules();
-
+        // Tạo một ObjectMapper mới hoàn toàn, không ảnh hưởng đến Controller/Postman
+        ObjectMapper axonObjectMapper = new ObjectMapper();
+        axonObjectMapper.findAndRegisterModules();
         return JacksonSerializer.builder()
-                .objectMapper(objectMapper)
-                .defaultTyping() // Giúp Axon hiểu đúng kiểu dữ liệu khi deserialize
+                .objectMapper(axonObjectMapper)
+                .defaultTyping() // Giữ nguyên để Axon hoạt động đúng logic Aggregate/Event
                 .build();
     }
 }

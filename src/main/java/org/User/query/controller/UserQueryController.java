@@ -23,7 +23,6 @@ public class UserQueryController {
     public CompletableFuture<UserResponse> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
         // Lấy userId (sub) từ token JWT
         String userId = jwt.getSubject();
-
         return queryGateway.query(
                 new GetUserProfileQuery(userId),
                 ResponseTypes.instanceOf(UserResponse.class)
