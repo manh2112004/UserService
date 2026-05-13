@@ -17,10 +17,7 @@ import java.util.UUID;
 public class authAggregate {
     @AggregateIdentifier
     private String userId; // Đây chính là keycloakUserId từ Command
-    private String fullName;
     private String email;
-    private String phone_number;
-    private String avatarUrl;
     private String userType;
     private boolean emailVerified;
     private boolean isActive;
@@ -85,6 +82,19 @@ public class authAggregate {
                 newCode
         ));
     }
+    @CommandHandler
+    public void handle(UpdateUserStatusCommand command) {
+        if (!this.emailVerified) {
+            throw new IllegalStateException("Không thể cập nhật trạng thái khi Email chưa được xác thực!");
+        }
+        if (this.isActive == command.isActive()) {
+            return;
+        }
+        AggregateLifecycle.apply(new UserStatusUpdatedEvent(
+                command.getUserId(),
+                command.isActive()
+        ));
+    }
     @EventSourcingHandler
     public void on(PasswordResetRequestedEvent event) {
         this.userId = event.getUserId();
@@ -94,7 +104,6 @@ public class authAggregate {
     public void on(UserCreatedEvent event) {
         // Cập nhật trạng thái của Aggregate từ Event
         this.userId = event.getUserId();
-        this.fullName = event.getUsername();
         this.email = event.getEmail();
         this.userType = event.getUserType();
     }
@@ -103,5 +112,8 @@ public class authAggregate {
         this.userId = event.getUserId();
         this.emailVerified = true; // Cập nhật trạng thái Aggregate
     }
-
+    @EventSourcingHandler
+    public void on(UserStatusUpdatedEvent event) {
+        this.isActive = event.isActive();
+    }
 }

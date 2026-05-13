@@ -12,8 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Permission {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @Column(unique = true, nullable = false)
     private String permissionName; // Ví dụ: "CREATE_JOB", "VIEW_CV"
