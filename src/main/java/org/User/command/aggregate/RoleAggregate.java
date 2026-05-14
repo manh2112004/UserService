@@ -1,8 +1,10 @@
 package org.User.command.aggregate;
 
+import org.User.command.command.AssignPermissionToRoleCommand;
 import org.User.command.command.AssignRoleToUserCommand;
 import org.User.command.command.CreateRoleCommand;
 import org.User.command.command.UpdateRoleCommand;
+import org.User.command.event.PermissionAssignedToRoleEvent;
 import org.User.command.event.RoleCreatedEvent;
 import org.User.command.event.RoleUpdatedEvent;
 import org.User.command.event.RolesAssignedToUserEvent;
@@ -36,9 +38,22 @@ public class RoleAggregate {
                 command.getPermissionNames()
         ));
     }
+    @CommandHandler
+    public void handle(AssignPermissionToRoleCommand command,RoleService roleService) {
+        roleService.assignPermissionsToRole(command.getRoleId(), command.getPermissionIds());
+        AggregateLifecycle.apply(new PermissionAssignedToRoleEvent(
+                command.getRoleId(),
+                command.getPermissionIds()
+        ));
+    }
     @EventSourcingHandler
     public void on(RoleCreatedEvent event) {
         this.id = event.getId();
         this.roleName = event.getRoleName();
+    }
+    @EventSourcingHandler
+    public void on(PermissionAssignedToRoleEvent event) {
+        this.id = event.getRoleId();
+        this.permissionIds = event.getPermissionIds();
     }
 }

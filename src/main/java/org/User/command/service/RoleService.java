@@ -1,6 +1,7 @@
 package org.User.command.service;
 
 import org.User.command.command.CreateRoleCommand;
+import org.User.command.model.request.AssignPermissionToRoleRequest;
 import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
@@ -13,4 +14,6 @@ public interface RoleService {
     CompletableFuture<String> processCreatePermission(CreatePermissionRequest request);
     String createPermissionInKeycloak(String name, String description);
     String createRoleInKeycloak(CreateRoleCommand command);
+    CompletableFuture<String> assignPermissionsToRole(AssignPermissionToRoleRequest request);
+    void assignPermissionsToRole(String roleId, List<String> permissionIds);
 }

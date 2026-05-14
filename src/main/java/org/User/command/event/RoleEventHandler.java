@@ -4,7 +4,10 @@ import org.User.command.data.*;
 import org.axonframework.eventhandling.EventHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -41,5 +44,20 @@ public class RoleEventHandler {
         user.getRoles().addAll(roles);
         // 4. Lưu lại vào MySQL
         userRepository.save(user);
+    }
+    @EventHandler
+    @Transactional
+    public void on(PermissionAssignedToRoleEvent event) {
+        roleRepository.findById(event.getRoleId()).ifPresent(role -> {
+            // Lấy danh sách thực thể Permission từ DB dựa trên list ID trong Event
+            List<Permission> permissions = permissionRepository.findAllByIdIn(event.getPermissionIds());
+
+            if (!permissions.isEmpty()) {
+                // Cập nhật Set permissions của Role
+                role.getPermissions().addAll(new HashSet<>(permissions));
+                roleRepository.save(role);
+                System.out.println(">>> Đã cập nhật Permissions cho Role: " + role.getRoleName());
+            }
+        });
     }
 }

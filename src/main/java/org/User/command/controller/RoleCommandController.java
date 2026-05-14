@@ -1,8 +1,10 @@
 package org.User.command.controller;
 
+import org.User.command.command.AssignPermissionToRoleCommand;
 import org.User.command.command.CreatePermissionCommand;
 import org.User.command.command.CreateRoleCommand;
 import org.User.command.data.RoleRepository;
+import org.User.command.model.request.AssignPermissionToRoleRequest;
 import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
@@ -43,5 +45,10 @@ public class RoleCommandController {
     @PostMapping("/permissions")
     public CompletableFuture<String> createPermission(@RequestBody CreatePermissionRequest request) {
         return roleService.processCreatePermission(request);
+    }
+    @PostMapping("/assign-permissions")
+    public CompletableFuture<String> assignPermissions(@RequestBody AssignPermissionToRoleRequest request) {
+        // Controller gọi Service xử lý
+        return roleService.assignPermissionsToRole(request);
     }
 }

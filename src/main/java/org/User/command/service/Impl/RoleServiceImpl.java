@@ -1,11 +1,13 @@
 package org.User.command.service.Impl;
 
+import jakarta.ws.rs.NotFoundException;
+import org.User.command.command.AssignPermissionToRoleCommand;
 import org.User.command.command.AssignRoleToUserCommand;
 import org.User.command.command.CreatePermissionCommand;
 import org.User.command.command.CreateRoleCommand;
 import jakarta.ws.rs.core.Response;
-import org.User.command.data.PermissionRepository;
-import org.User.command.data.UserRepository;
+import org.User.command.data.*;
+import org.User.command.model.request.AssignPermissionToRoleRequest;
 import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
@@ -13,9 +15,9 @@ import org.User.command.service.RoleService;
 import org.User.command.service.UserService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.RoleByIdResource;
 import org.keycloak.admin.client.resource.RoleResource;
 import org.keycloak.admin.client.resource.RolesResource;
-import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +25,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -34,6 +35,8 @@ public class RoleServiceImpl implements RoleService {
     private CommandGateway commandGateway;
     @Autowired
     private PermissionRepository permissionRepository;
+    @Autowired
+    private RoleRepository roleRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -158,5 +161,49 @@ public class RoleServiceImpl implements RoleService {
         return roleResource.toRepresentation().getId();
     }
 
+    @Override
+    public CompletableFuture<String> assignPermissionsToRole(AssignPermissionToRoleRequest request) {
+        // 1. Kiểm tra Role có tồn tại trong DB MySQL không
+        if (!roleRepository.existsById(request.getRoleId())) {
+            throw new RuntimeException("Role không tồn tại!");
+        }
+        // 2. Gửi Command sang Aggregate
+        return commandGateway.send(new AssignPermissionToRoleCommand(
+                request.getRoleId(),
+                request.getPermissionIds()
+        ));
+    }
 
+    @Override
+    public void assignPermissionsToRole(String roleId, List<String> permissionIds) {
+        // 1. Tìm ID của Client trên Keycloak
+        String clientUuid = keycloak.realm(realm).clients().findByClientId(clientId).get(0).getId();
+
+        // 2. Chuyển đổi list ID từ Postman thành list NAME thực tế từ bảng permissions
+        List<String> permissionNames = permissionRepository.findAllById(permissionIds)
+                .stream()
+                .map(Permission::getPermissionName)
+                .collect(Collectors.toList());
+
+        // 3. Lấy thông tin Role cha từ DB
+        Role roleEntity = roleRepository.findById(roleId)
+                .orElseThrow(() -> new RuntimeException("Role không tồn tại trong DB"));
+
+        // 4. Tìm Role cha trên Keycloak bằng NAME (RECRUITER_LEAD)
+        RoleResource roleResource = keycloak.realm(realm)
+                .clients()
+                .get(clientUuid)
+                .roles()
+                .get(roleEntity.getRoleName());
+
+        // 5. Lấy danh sách RoleRepresentation của các Permission con
+        List<RoleRepresentation> composites = permissionNames.stream()
+                .map(pName -> keycloak.realm(realm).clients().get(clientUuid).roles().get(pName).toRepresentation())
+                .collect(Collectors.toList());
+
+        // 6. Gán vào Keycloak
+        if (!composites.isEmpty()) {
+            roleResource.addComposites(composites);
+        }
+    }
 }
