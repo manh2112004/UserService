@@ -91,4 +91,5 @@ public class authCommandController {
                 .thenApply(it -> "Mã xác thực mới đã được gửi vào email của bạn.")
                 .exceptionally(e -> "Lỗi: " + e.getMessage());
     }
+
 }

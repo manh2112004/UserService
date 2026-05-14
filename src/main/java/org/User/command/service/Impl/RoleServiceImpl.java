@@ -1,16 +1,21 @@
 package org.User.command.service.Impl;
 
+import org.User.command.command.AssignRoleToUserCommand;
 import org.User.command.command.CreatePermissionCommand;
 import org.User.command.command.CreateRoleCommand;
 import jakarta.ws.rs.core.Response;
 import org.User.command.data.PermissionRepository;
+import org.User.command.data.UserRepository;
+import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
 import org.User.command.service.RoleService;
+import org.User.command.service.UserService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RoleResource;
 import org.keycloak.admin.client.resource.RolesResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +34,8 @@ public class RoleServiceImpl implements RoleService {
     private CommandGateway commandGateway;
     @Autowired
     private PermissionRepository permissionRepository;
+    @Autowired
+    private UserRepository userRepository;
     @Autowired
     private Keycloak keycloak;
     @Value("${keycloak.realm}")
@@ -150,4 +157,6 @@ public class RoleServiceImpl implements RoleService {
 
         return roleResource.toRepresentation().getId();
     }
+
+
 }

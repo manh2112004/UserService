@@ -1,9 +1,11 @@
 package org.User.command.aggregate;
 
+import org.User.command.command.AssignRoleToUserCommand;
 import org.User.command.command.CreateRoleCommand;
 import org.User.command.command.UpdateRoleCommand;
 import org.User.command.event.RoleCreatedEvent;
 import org.User.command.event.RoleUpdatedEvent;
+import org.User.command.event.RolesAssignedToUserEvent;
 import org.User.command.service.RoleService;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;

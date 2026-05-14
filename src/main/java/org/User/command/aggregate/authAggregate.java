@@ -3,6 +3,8 @@ package org.User.command.aggregate;
 import lombok.NoArgsConstructor;
 import org.User.command.command.*;
 import org.User.command.event.*;
+import org.User.command.service.RoleService;
+import org.User.command.service.UserService;
 import org.User.command.service.authService;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
@@ -10,6 +12,8 @@ import org.axonframework.modelling.command.AggregateIdentifier;
 import org.axonframework.modelling.command.AggregateLifecycle;
 import org.axonframework.spring.stereotype.Aggregate;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Aggregate
@@ -21,6 +25,7 @@ public class authAggregate {
     private String userType;
     private boolean emailVerified;
     private boolean isActive;
+    private Set<String>userRoles=new HashSet<>();
     @CommandHandler
     public authAggregate(CreateUserCommand command) {
         AggregateLifecycle.apply(UserCreatedEvent.builder()
@@ -95,6 +100,17 @@ public class authAggregate {
                 command.isActive()
         ));
     }
+    @CommandHandler
+    public void handle(AssignRoleToUserCommand command, UserService userService) {
+        // Gọi RoleService (hoặc KeycloakService) để thực hiện gán Role thực tế trên Keycloak
+        // Lưu ý: Bạn có thể inject RoleService vào Handler này
+        userService.assignRolesToUserInKeycloak(command.getUserId(), command.getRoleNames());
+        // Phát event sau khi gán thành công
+        AggregateLifecycle.apply(new RolesAssignedToUserEvent(
+                command.getUserId(),
+                command.getRoleNames()
+        ));
+    }
     @EventSourcingHandler
     public void on(PasswordResetRequestedEvent event) {
         this.userId = event.getUserId();
@@ -115,5 +131,14 @@ public class authAggregate {
     @EventSourcingHandler
     public void on(UserStatusUpdatedEvent event) {
         this.isActive = event.isActive();
+    }
+    @EventSourcingHandler
+    public void on(RolesAssignedToUserEvent event) {
+        // 1. Cập nhật ID (Phòng trường hợp đây là sự kiện đầu tiên, dù thường là UserCreatedEvent)
+        this.userId = event.getUserId();
+        // 2. Cập nhật danh sách Role vào trạng thái nội tại của Aggregate
+        if (event.getRoleNames() != null) {
+            this.userRoles.addAll(event.getRoleNames());
+        }
     }
 }

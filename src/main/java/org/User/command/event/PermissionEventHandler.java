@@ -24,7 +24,6 @@ public class PermissionEventHandler {
         permission.setId(event.getId());
         permission.setPermissionName(event.getPermissionName());
         permission.setDescription(event.getDescription());
-        // Hibernate sẽ không còn báo lỗi "must be manually assigned" nữa
         permissionRepository.save(permission);
     }
 }
