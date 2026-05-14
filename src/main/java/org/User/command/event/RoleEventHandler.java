@@ -8,22 +8,27 @@ import org.axonframework.eventhandling.EventHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.util.HashSet;
+import java.util.Set;
+
 @Component
 public class RoleEventHandler {
     @Autowired
     private RoleRepository roleRepository;
-
     @Autowired
     private PermissionRepository permissionRepository;
 
     @EventHandler
     public void on(RoleCreatedEvent event) {
+        // Lưu Role với ID từ Keycloak
         Role role = new Role();
+        role.setId(event.getId());
         role.setRoleName(event.getRoleName());
         role.setDescription(event.getDescription());
-
-        if (event.getPermissionIds() != null) {
-            role.setPermissions(new HashSet<>(permissionRepository.findAllById(event.getPermissionIds())));
+        // Ánh xạ các Permission từ DB dựa trên tên
+        if (event.getPermissionNames() != null) {
+            Set<Permission> permissions = permissionRepository
+                    .findAllByPermissionNameIn(event.getPermissionNames());
+            role.setPermissions(permissions);
         }
         roleRepository.save(role);
     }

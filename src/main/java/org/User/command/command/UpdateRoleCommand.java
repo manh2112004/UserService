@@ -1,21 +1,16 @@
 package org.User.command.command;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import lombok.AllArgsConstructor;
+
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 import java.util.List;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
-@JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
-public class CreateRoleCommand {
+public class UpdateRoleCommand {
     @TargetAggregateIdentifier
-    private String id;
+    private String id; // ID này phải khớp với ID của MANAGER hiện tại
     private String roleName;
     private String description;
     private List<String> permissionNames;
