@@ -98,7 +98,22 @@ public class authServiceImpl implements authService {
             ResponseEntity<LoginResponseDTO> response = restTemplate.postForEntity(url, entity, LoginResponseDTO.class);
             return response.getBody();
         } catch (HttpClientErrorException e) {
-            System.err.println("Chi tiết lỗi Keycloak: " + e.getResponseBodyAsString());
+            String errorBody = e.getResponseBodyAsString();
+
+            // In ra để kiểm chứng (bạn đã thấy dòng này trong log)
+            System.err.println("Chi tiết lỗi Keycloak: " + errorBody);
+
+            // Kiểm tra nếu error_description chứa cụm từ khóa về tài khoản bị khóa
+            if (errorBody.contains("Account disabled") || errorBody.contains("user_disabled")) {
+                throw new RuntimeException("Tài khoản đang bị khóa. Vui lòng liên hệ Admin!");
+            }
+
+            // Kiểm tra lỗi khóa tạm thời do nhập sai pass quá nhiều (Brute Force)
+            if (errorBody.contains("user_temporarily_disabled")) {
+                throw new RuntimeException("Tài khoản tạm thời bị khóa. Hãy thử lại sau ít phút!");
+            }
+
+            // Các trường hợp invalid_grant khác (thường là sai pass hoặc sai user)
             throw new RuntimeException("Sai tài khoản hoặc mật khẩu!");
         }
     }
