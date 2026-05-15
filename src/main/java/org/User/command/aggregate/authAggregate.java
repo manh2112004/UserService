@@ -88,13 +88,10 @@ public class authAggregate {
         ));
     }
     @CommandHandler
-    public void handle(UpdateUserStatusCommand command) {
-        if (!this.emailVerified) {
-            throw new IllegalStateException("Không thể cập nhật trạng thái khi Email chưa được xác thực!");
-        }
-        if (this.isActive == command.isActive()) {
-            return;
-        }
+    public void handle(UpdateUserStatusCommand command, UserService userService) {
+        // 2. Gọi Keycloak để disable/enable user trên server bảo mật
+        userService.updateUserStatusInKeycloak(command.getUserId(), command.isActive());
+        // 3. Phát Event cập nhật DB
         AggregateLifecycle.apply(new UserStatusUpdatedEvent(
                 command.getUserId(),
                 command.isActive()
@@ -129,10 +126,6 @@ public class authAggregate {
         this.emailVerified = true; // Cập nhật trạng thái Aggregate
     }
     @EventSourcingHandler
-    public void on(UserStatusUpdatedEvent event) {
-        this.isActive = event.isActive();
-    }
-    @EventSourcingHandler
     public void on(RolesAssignedToUserEvent event) {
         // 1. Cập nhật ID (Phòng trường hợp đây là sự kiện đầu tiên, dù thường là UserCreatedEvent)
         this.userId = event.getUserId();
@@ -140,5 +133,10 @@ public class authAggregate {
         if (event.getRoleNames() != null) {
             this.userRoles.addAll(event.getRoleNames());
         }
+    }
+    @EventSourcingHandler
+    public void on(UserStatusUpdatedEvent event) {
+        this.userId = event.getUserId();
+        this.isActive = event.isActive();
     }
 }
