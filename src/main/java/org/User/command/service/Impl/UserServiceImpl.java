@@ -2,23 +2,30 @@ package org.User.command.service.Impl;
 
 import org.User.command.command.AssignRoleToUserCommand;
 import org.User.command.command.UpdateUserStatusCommand;
-import org.User.command.data.User;
-import org.User.command.data.UserRepository;
+import org.User.command.data.*;
 import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.service.UserService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -28,6 +35,10 @@ public class UserServiceImpl implements UserService {
     private CommandGateway commandGateway;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
+    private PermissionRepository permissionRepository;
     @Autowired
     private Keycloak keycloak;
     @Value("${keycloak.realm}")
@@ -60,26 +71,80 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void assignRolesToUserInKeycloak(String userId, List<String> roleNames) {
-        UserResource userResource = keycloak.realm(realm).users().get(userId);
-        String clientUuid = keycloak.realm(realm).clients().findByClientId(clientId).get(0).getId();
+    public void assignRolesToUserInKeycloak(String keycloakUserId, List<String> roleNames) {
+        RealmResource realmResource = keycloak.realm(realm);
 
-        List<RoleRepresentation> rolesToAdd = roleNames.stream()
-                .map(roleName -> keycloak.realm(realm).clients().get(clientUuid).roles().get(roleName).toRepresentation())
-                .collect(Collectors.toList());
+        UserResource userResource = realmResource
+                .users()
+                .get(keycloakUserId);
+        ClientRepresentation client = realmResource
+                .clients()
+                .findByClientId(clientId)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy client: " + clientId));
 
-        userResource.roles().clientLevel(clientUuid).add(rolesToAdd);
+        ClientResource clientResource = realmResource
+                .clients()
+                .get(client.getId());
+
+        List<RoleRepresentation> keycloakRoles = roleNames.stream()
+                .map(roleName -> clientResource.roles()
+                        .get(roleName)
+                        .toRepresentation())
+                .toList();
+
+        userResource.roles()
+                .clientLevel(client.getId())
+                .add(keycloakRoles);
     }
     @Override
     public CompletableFuture<String> assignRoles(AssignRoleRequest request) {
-        // 1. Kiểm tra User có tồn tại trong DB Read chưa (Guard Logic)
-        if (!userRepository.existsById(request.getUserId())) {
-            throw new RuntimeException("User không tồn tại!");
+        if (request.getUserId() == null || request.getUserId().isBlank()) {
+            throw new RuntimeException("userId không được để trống");
         }
-        // 2. Gửi Command đi
-        return commandGateway.send(new AssignRoleToUserCommand(
-                request.getUserId(),
-                request.getRoleNames()
-        ));
+
+        if (request.getRoleNames() == null || request.getRoleNames().isEmpty()) {
+            throw new RuntimeException("roleNames không được để trống");
+        }
+
+        if (!userRepository.existsByKeycloakUid(request.getUserId())) {
+            throw new RuntimeException("User không tồn tại");
+        }
+
+        Set<String> requestedNames = new HashSet<>(request.getRoleNames());
+
+        Set<Permission> permissions =
+                permissionRepository.findAllByPermissionNameIn(requestedNames);
+
+        if (!permissions.isEmpty()) {
+            Set<String> permissionNames = permissions.stream()
+                    .map(Permission::getPermissionName)
+                    .collect(Collectors.toSet());
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Không được gán permission trực tiếp cho user: " + permissionNames
+            );
+        }
+
+        Set<Role> roles = roleRepository.findAllByRoleNameIn(requestedNames);
+
+        if (roles.size() != requestedNames.size()) {
+            Set<String> existingRoleNames = roles.stream()
+                    .map(Role::getRoleName)
+                    .collect(Collectors.toSet());
+
+            requestedNames.removeAll(existingRoleNames);
+
+            throw new RuntimeException("Role không tồn tại: " + requestedNames);
+        }
+
+        return commandGateway.send(
+                new AssignRoleToUserCommand(
+                        request.getUserId(),
+                        new ArrayList<>(requestedNames)
+                )
+        );
     }
 }

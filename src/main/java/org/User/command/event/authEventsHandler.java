@@ -38,22 +38,17 @@ public class authEventsHandler {
     }
     @EventHandler
     public void on(RolesAssignedToUserEvent event) {
-        // Tìm bằng keycloakUid thay vì findById
-        Optional<User> userOptional = userRepository.findByKeycloakUid(event.getUserId());
-
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            Set<Role> assignedRoles = roleRepository.findAllByRoleNameIn(event.getRoleNames());
-
-            if (!assignedRoles.isEmpty()) {
-                user.getRoles().addAll(assignedRoles);
-                userRepository.save(user); // Lưu vào bảng user_roles
-                System.out.println("Thành công: Đã gán " + assignedRoles.size() + " roles cho user " + event.getUserId());
-            } else {
-                System.err.println("Lỗi: Không tìm thấy Role nào trong bảng roles khớp với: " + event.getRoleNames());
-            }
-        } else {
-            System.err.println("Lỗi: Không tìm thấy User có keycloak_uid = " + event.getUserId() + " trong MySQL");
-        }
+        User user = userRepository.findByKeycloakUid(event.getUserId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Không tìm thấy User có keycloak_uid = " + event.getUserId()
+                ));
+        Set<Role> assignedRoles =
+                roleRepository.findAllByRoleNameIn(event.getRoleNames());
+        user.getRoles().addAll(assignedRoles);
+        userRepository.save(user);
+        System.out.println(
+                "Đã gán role cho user " + event.getUserId()
+                        + ": " + event.getRoleNames()
+        );
     }
 }

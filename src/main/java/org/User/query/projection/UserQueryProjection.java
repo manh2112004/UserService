@@ -4,14 +4,13 @@ import org.User.command.data.Permission;
 import org.User.command.data.Role;
 import org.User.command.data.User;
 import org.User.command.data.UserRepository;
-import org.User.query.model.UserResponse;
+import org.User.query.model.response.UserResponse;
 import org.User.query.queries.GetUserProfileQuery;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.stream.Collectors;
 @Component
 @Transactional(readOnly = true)
 public class UserQueryProjection {
