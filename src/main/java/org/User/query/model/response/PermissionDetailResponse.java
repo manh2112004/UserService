@@ -5,8 +5,10 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class PermissionResponse {
+public class PermissionDetailResponse {
     private String id;
+
     private String permissionName;
+
     private String description;
 }

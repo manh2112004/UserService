@@ -27,6 +27,8 @@ public class AdminQueryController {
     private final GetAdminUserDetailQueryHandler getAdminUserDetailQueryHandler;
     private final GetRolesQueryHandler getRolesQueryHandler;
     private final GetPermissionsQueryHandler getPermissionsQueryHandler;
+    private final GetRoleDetailQueryHandler getRoleDetailQueryHandler;
+    private final GetPermissionDetailQueryHandler getPermissionDetailQueryHandler;
     @GetMapping("/me")
     public CompletableFuture<UserResponse> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
         // Lấy userId (sub) từ token JWT
@@ -66,5 +68,23 @@ public class AdminQueryController {
     @GetMapping("/permissions")
     public List<PermissionResponse> getPermissions() {
         return getPermissionsQueryHandler.handle(new GetPermissionsQuery());
+    }
+    @GetMapping("/roles/{id}")
+    public RoleDetailResponse getRoleById(
+            @PathVariable("id") String id
+    ) {
+
+        return getRoleDetailQueryHandler.handle(
+                new GetRoleDetailQuery(id)
+        );
+    }
+    @GetMapping("/permissions/{id}")
+    public PermissionDetailResponse getPermissionById(
+            @PathVariable("id") String id
+    ) {
+
+        return getPermissionDetailQueryHandler.handle(
+                new GetPermissionDetailQuery(id)
+        );
     }
 }
