@@ -52,8 +52,22 @@ public class RoleCommandController {
     ) {
         return roleService.updateRole(id, request);
     }
+
     @DeleteMapping("/roles/{id}")
     public CompletableFuture<String> deleteRole(@PathVariable String id) {
         return roleService.deleteRole(id);
+    }
+
+    @PutMapping("/permissions/{id}")
+    public CompletableFuture<String> updatePermission(
+            @PathVariable("id") String id,
+            @RequestBody UpdatePermissionRequest request
+    ) {
+        return roleService.updatePermission(id, request);
+    }
+
+    @DeleteMapping("/permissions/{id}")
+    public CompletableFuture<String> deletePermission(@PathVariable("id") String id) {
+        return roleService.deletePermission(id);
     }
 }

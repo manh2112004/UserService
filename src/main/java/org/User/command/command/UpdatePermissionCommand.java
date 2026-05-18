@@ -10,9 +10,9 @@ import org.axonframework.modelling.command.TargetAggregateIdentifier;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateRoleCommand {
+public class UpdatePermissionCommand {
     @TargetAggregateIdentifier
-    private String id; // ID này phải khớp với ID của MANAGER hiện tại
-    private String roleName;
+    private String id;
+    private String permissionName;
     private String description;
 }

@@ -47,7 +47,13 @@ public class RoleAggregate {
         ));
     }
     @CommandHandler
-    public void handle(UpdateRoleCommand command) {
+    public String handle(UpdateRoleCommand command, RoleService roleService) {
+        roleService.updateRoleInKeycloak(
+                this.roleName,
+                command.getRoleName(),
+                command.getDescription()
+        );
+
         AggregateLifecycle.apply(
                 RoleUpdatedEvent.builder()
                         .id(command.getId())
@@ -55,6 +61,7 @@ public class RoleAggregate {
                         .description(command.getDescription())
                         .build()
         );
+        return "Cập nhật role thành công";
     }
     @CommandHandler
     public String handle(DeleteRoleCommand command, RoleService roleService) {
@@ -67,6 +74,7 @@ public class RoleAggregate {
     public void on(RoleCreatedEvent event) {
         this.id = event.getId();
         this.roleName = event.getRoleName();
+        this.description = event.getDescription();
     }
     @EventSourcingHandler
     public void on(PermissionAssignedToRoleEvent event) {

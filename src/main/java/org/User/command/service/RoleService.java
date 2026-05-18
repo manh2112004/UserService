@@ -17,4 +17,8 @@ public interface RoleService {
     CompletableFuture<String> deleteRole(String roleId);
     CompletableFuture<String> updateRole(String roleId, UpdateRoleRequest request);
     void updateRoleInKeycloak(String oldRoleName,String newRoleName,String description);
+    CompletableFuture<String> updatePermission(String permissionId, UpdatePermissionRequest request);
+    void updatePermissionInKeycloak(String oldPermissionName, String newPermissionName, String description);
+    CompletableFuture<String> deletePermission(String permissionId);
+    void deletePermissionInKeycloak(String permissionName);
 }

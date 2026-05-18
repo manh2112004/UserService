@@ -70,9 +70,12 @@ public class RoleEventHandler {
         Role role = roleRepository.findById(event.getId())
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
-        role.setRoleName(event.getRoleName());
-        role.setDescription(event.getDescription());
-
+        if (event.getRoleName() != null) {
+            role.setRoleName(event.getRoleName());
+        }
+        if (event.getDescription() != null) {
+            role.setDescription(event.getDescription());
+        }
         roleRepository.save(role);
     }
     @EventHandler

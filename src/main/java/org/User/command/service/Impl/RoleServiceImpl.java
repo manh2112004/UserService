@@ -6,6 +6,7 @@ import org.User.command.data.*;
 import org.User.command.model.request.AssignPermissionToRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
+import org.User.command.model.request.UpdatePermissionRequest;
 import org.User.command.model.request.UpdateRoleRequest;
 import org.User.command.service.RoleService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
@@ -248,12 +249,6 @@ public class RoleServiceImpl implements RoleService {
             );
         }
 
-        updateRoleInKeycloak(
-                oldRoleName,
-                newRoleName,
-                request.getDescription()
-        );
-
         return commandGateway.send(
                 UpdateRoleCommand.builder()
                         .id(roleId)
@@ -291,6 +286,104 @@ public class RoleServiceImpl implements RoleService {
                     HttpStatus.NOT_FOUND,
                     "Role not found in Keycloak"
             );
+        }
+    }
+
+    @Override
+    public CompletableFuture<String> updatePermission(String permissionId, UpdatePermissionRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        Permission permission = permissionRepository.findById(permissionId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Permission not found"
+                ));
+
+        if (request.getPermissionName() == null || request.getPermissionName().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Permission name is required"
+            );
+        }
+
+        String oldPermissionName = permission.getPermissionName();
+        String newPermissionName = request.getPermissionName().trim();
+
+        if (!oldPermissionName.equalsIgnoreCase(newPermissionName)
+                && permissionRepository.existsByPermissionName(newPermissionName)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Permission name already exists"
+            );
+        }
+
+        return commandGateway.send(
+                UpdatePermissionCommand.builder()
+                        .id(permissionId)
+                        .permissionName(newPermissionName)
+                        .description(request.getDescription())
+                        .build()
+        );
+    }
+
+    @Override
+    public void updatePermissionInKeycloak(String oldPermissionName, String newPermissionName, String description) {
+        try {
+            String clientUuid = keycloak.realm(realm)
+                    .clients()
+                    .findByClientId(clientId)
+                    .get(0)
+                    .getId();
+
+            RoleResource permissionResource = keycloak.realm(realm)
+                    .clients()
+                    .get(clientUuid)
+                    .roles()
+                    .get(oldPermissionName);
+
+            RoleRepresentation permissionRep = permissionResource.toRepresentation();
+            permissionRep.setName(newPermissionName);
+            permissionRep.setDescription(description);
+
+            permissionResource.update(permissionRep);
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Permission not found in Keycloak"
+            );
+        }
+    }
+
+    @Override
+    public CompletableFuture<String> deletePermission(String permissionId) {
+        checkDeletePermissionPermission();
+
+        if (!permissionRepository.existsById(permissionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found");
+        }
+
+        return commandGateway.send(new DeletePermissionCommand(permissionId));
+    }
+
+    @Override
+    public void deletePermissionInKeycloak(String permissionName) {
+        String clientUuid = keycloak.realm(realm)
+                .clients()
+                .findByClientId(clientId)
+                .get(0)
+                .getId();
+
+        try {
+            keycloak.realm(realm)
+                    .clients()
+                    .get(clientUuid)
+                    .roles()
+                    .get(permissionName)
+                    .remove();
+        } catch (NotFoundException ignored) {
+            // Permission đã không còn trên Keycloak, vẫn tiếp tục dọn dữ liệu trong DB.
         }
     }
 
@@ -340,6 +433,38 @@ public class RoleServiceImpl implements RoleService {
 
         if (!hasPermission) {
             throw new AccessDeniedException("Bạn không có quyền USER_DELETE để xóa role");
+        }
+    }
+
+    private void checkDeletePermissionPermission() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean hasPermission = authentication != null
+                && authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        authority.getAuthority().equals("PERMISSION_DELETE")
+                                || authority.getAuthority().equals("ROLE_PERMISSION_DELETE")
+                                || authority.getAuthority().equals("USER_DELETE")
+                                || authority.getAuthority().equals("ROLE_USER_DELETE")
+                );
+
+        if (!hasPermission && authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+            Map<String, Object> tokenAttributes = jwtAuthentication.getTokenAttributes();
+            hasPermission = hasRoleInJwtClaims(tokenAttributes, "PERMISSION_DELETE")
+                    || hasRoleInJwtClaims(tokenAttributes, "USER_DELETE");
+        }
+
+        if (!hasPermission && authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+            hasPermission = userRepository.findByKeycloakUid(jwtAuthentication.getName())
+                    .map(user -> user.getRoles().stream()
+                            .flatMap(role -> role.getPermissions().stream())
+                            .anyMatch(permission ->
+                                    permission.getPermissionName().equals("PERMISSION_DELETE")
+                                            || permission.getPermissionName().equals("USER_DELETE")))
+                    .orElse(false);
+        }
+
+        if (!hasPermission) {
+            throw new AccessDeniedException("Bạn không có quyền PERMISSION_DELETE để xóa permission");
         }
     }
 

@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoleUpdatedEvent {
+public class PermissionUpdatedEvent {
     private String id;
-    private String roleName;
+    private String permissionName;
     private String description;
 }
