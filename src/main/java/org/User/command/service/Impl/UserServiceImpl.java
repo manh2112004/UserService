@@ -1,11 +1,8 @@
 package org.User.command.service.Impl;
 
-import org.User.command.command.AssignRoleToUserCommand;
-import org.User.command.command.UpdateUserStatusCommand;
 import org.User.command.data.*;
 import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.service.UserService;
-import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -20,6 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -31,8 +29,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
-    @Autowired
-    private CommandGateway commandGateway;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -99,6 +95,7 @@ public class UserServiceImpl implements UserService {
                 .add(keycloakRoles);
     }
     @Override
+    @Transactional
     public CompletableFuture<String> assignRoles(AssignRoleRequest request) {
         if (request.getUserId() == null || request.getUserId().isBlank()) {
             throw new RuntimeException("userId không được để trống");
@@ -140,11 +137,15 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Role không tồn tại: " + requestedNames);
         }
 
-        return commandGateway.send(
-                new AssignRoleToUserCommand(
-                        request.getUserId(),
-                        new ArrayList<>(requestedNames)
-                )
-        );
+        assignRolesToUserInKeycloak(request.getUserId(), new ArrayList<>(requestedNames));
+
+        User user = userRepository.findByKeycloakUid(request.getUserId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Không tìm thấy User có keycloak_uid = " + request.getUserId()
+                ));
+        user.getRoles().addAll(roles);
+        userRepository.save(user);
+
+        return CompletableFuture.completedFuture("Gán role cho user thành công");
     }
 }
