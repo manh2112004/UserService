@@ -1,14 +1,12 @@
 package org.User.command.service.Impl;
 
 import jakarta.ws.rs.NotFoundException;
-import org.User.command.command.AssignPermissionToRoleCommand;
-import org.User.command.command.CreatePermissionCommand;
-import org.User.command.command.CreateRoleCommand;
-import org.User.command.command.DeleteRoleCommand;
+import org.User.command.command.*;
 import org.User.command.data.*;
 import org.User.command.model.request.AssignPermissionToRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
+import org.User.command.model.request.UpdateRoleRequest;
 import org.User.command.service.RoleService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
@@ -220,6 +218,80 @@ public class RoleServiceImpl implements RoleService {
         }
 
         return commandGateway.send(new DeleteRoleCommand(roleId));
+    }
+
+    @Override
+    public CompletableFuture<String> updateRole(String roleId, UpdateRoleRequest request) {
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Role not found"
+                        )
+                );
+
+        if (request.getRoleName() == null || request.getRoleName().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Role name is required"
+            );
+        }
+
+        String oldRoleName = role.getRoleName();
+        String newRoleName = request.getRoleName().trim();
+
+        if (!oldRoleName.equalsIgnoreCase(newRoleName)
+                && roleRepository.existsByRoleName(newRoleName)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Role name already exists"
+            );
+        }
+
+        updateRoleInKeycloak(
+                oldRoleName,
+                newRoleName,
+                request.getDescription()
+        );
+
+        return commandGateway.send(
+                UpdateRoleCommand.builder()
+                        .id(roleId)
+                        .roleName(newRoleName)
+                        .description(request.getDescription())
+                        .build()
+        );
+    }
+
+    @Override
+    public void updateRoleInKeycloak(String oldRoleName, String newRoleName, String description) {
+        try {
+            String clientUuid = keycloak.realm(realm)
+                    .clients()
+                    .findByClientId(clientId)
+                    .get(0)
+                    .getId();
+
+            RoleResource roleResource = keycloak.realm(realm)
+                    .clients()
+                    .get(clientUuid)
+                    .roles()
+                    .get(oldRoleName);
+
+            RoleRepresentation roleRep =
+                    roleResource.toRepresentation();
+
+            roleRep.setName(newRoleName);
+            roleRep.setDescription(description);
+
+            roleResource.update(roleRep);
+
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Role not found in Keycloak"
+            );
+        }
     }
 
     @Override

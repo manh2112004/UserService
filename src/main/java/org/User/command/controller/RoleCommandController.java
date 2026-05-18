@@ -4,21 +4,13 @@ import org.User.command.command.AssignPermissionToRoleCommand;
 import org.User.command.command.CreatePermissionCommand;
 import org.User.command.command.CreateRoleCommand;
 import org.User.command.data.RoleRepository;
-import org.User.command.model.request.AssignPermissionToRoleRequest;
-import org.User.command.model.request.AssignRoleRequest;
-import org.User.command.model.request.CreatePermissionRequest;
-import org.User.command.model.request.CreateRoleRequest;
+import org.User.command.model.request.*;
 import org.User.command.service.RoleService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
@@ -53,7 +45,13 @@ public class RoleCommandController {
         // Controller gọi Service xử lý
         return roleService.assignPermissionsToRole(request);
     }
-
+    @PutMapping("/roles/{id}")
+    public CompletableFuture<String> updateRole(
+            @PathVariable("id") String id,
+            @RequestBody UpdateRoleRequest request
+    ) {
+        return roleService.updateRole(id, request);
+    }
     @DeleteMapping("/roles/{id}")
     public CompletableFuture<String> deleteRole(@PathVariable String id) {
         return roleService.deleteRole(id);

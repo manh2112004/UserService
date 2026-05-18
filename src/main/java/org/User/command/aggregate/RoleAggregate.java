@@ -3,9 +3,11 @@ package org.User.command.aggregate;
 import org.User.command.command.AssignPermissionToRoleCommand;
 import org.User.command.command.CreateRoleCommand;
 import org.User.command.command.DeleteRoleCommand;
+import org.User.command.command.UpdateRoleCommand;
 import org.User.command.event.PermissionAssignedToRoleEvent;
 import org.User.command.event.RoleCreatedEvent;
 import org.User.command.event.RoleDeletedEvent;
+import org.User.command.event.RoleUpdatedEvent;
 import org.User.command.service.RoleService;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
@@ -44,7 +46,16 @@ public class RoleAggregate {
                 command.getPermissionIds()
         ));
     }
-
+    @CommandHandler
+    public void handle(UpdateRoleCommand command) {
+        AggregateLifecycle.apply(
+                RoleUpdatedEvent.builder()
+                        .id(command.getId())
+                        .roleName(command.getRoleName())
+                        .description(command.getDescription())
+                        .build()
+        );
+    }
     @CommandHandler
     public String handle(DeleteRoleCommand command, RoleService roleService) {
         roleService.deleteRoleInKeycloak(command.getRoleId());
@@ -67,5 +78,11 @@ public class RoleAggregate {
     public void on(RoleDeletedEvent event) {
         this.id = event.getRoleId();
         AggregateLifecycle.markDeleted();
+    }
+    @EventSourcingHandler
+    public void on(RoleUpdatedEvent event) {
+        this.id = event.getId();
+        this.roleName = event.getRoleName();
+        this.description = event.getDescription();
     }
 }

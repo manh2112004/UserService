@@ -60,7 +60,21 @@ public class RoleEventHandler {
             }
         });
     }
+    @EventHandler
+    public void on(RoleUpdatedEvent event) {
+        if (event.getId() == null || event.getId().isBlank()) {
+            System.out.println("Skip RoleUpdatedEvent because id is null");
+            return;
+        }
 
+        Role role = roleRepository.findById(event.getId())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        role.setRoleName(event.getRoleName());
+        role.setDescription(event.getDescription());
+
+        roleRepository.save(role);
+    }
     @EventHandler
     @Transactional
     public void on(RoleDeletedEvent event) {
