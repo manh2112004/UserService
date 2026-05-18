@@ -2,20 +2,16 @@ package org.User.command.service.Impl;
 
 import jakarta.ws.rs.NotFoundException;
 import org.User.command.command.AssignPermissionToRoleCommand;
-import org.User.command.command.AssignRoleToUserCommand;
 import org.User.command.command.CreatePermissionCommand;
 import org.User.command.command.CreateRoleCommand;
-import jakarta.ws.rs.core.Response;
+import org.User.command.command.DeleteRoleCommand;
 import org.User.command.data.*;
 import org.User.command.model.request.AssignPermissionToRoleRequest;
-import org.User.command.model.request.AssignRoleRequest;
 import org.User.command.model.request.CreatePermissionRequest;
 import org.User.command.model.request.CreateRoleRequest;
 import org.User.command.service.RoleService;
-import org.User.command.service.UserService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
-import org.keycloak.admin.client.resource.RoleByIdResource;
 import org.keycloak.admin.client.resource.RoleResource;
 import org.keycloak.admin.client.resource.RolesResource;
 import org.keycloak.representations.idm.RoleRepresentation;
@@ -27,7 +23,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -217,15 +212,20 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    @Transactional
     public CompletableFuture<String> deleteRole(String roleId) {
         checkDeleteRolePermission();
 
+        if (!roleRepository.existsById(roleId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Role không tồn tại");
+        }
+
+        return commandGateway.send(new DeleteRoleCommand(roleId));
+    }
+
+    @Override
+    public void deleteRoleInKeycloak(String roleId) {
         Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Role không tồn tại"
-                ));
+                .orElseThrow(() -> new RuntimeException("Role không tồn tại trong DB"));
 
         String clientUuid = keycloak.realm(realm)
                 .clients()
@@ -243,17 +243,6 @@ public class RoleServiceImpl implements RoleService {
         } catch (NotFoundException ignored) {
             // Role đã không còn trên Keycloak, vẫn tiếp tục dọn dữ liệu trong DB.
         }
-
-        userRepository.findAll().forEach(user -> {
-            if (user.getRoles().removeIf(existingRole -> existingRole.getId().equals(roleId))) {
-                userRepository.save(user);
-            }
-        });
-
-        role.getPermissions().clear();
-        roleRepository.delete(role);
-
-        return CompletableFuture.completedFuture("Xóa role thành công");
     }
 
     private void checkDeleteRolePermission() {
@@ -267,6 +256,14 @@ public class RoleServiceImpl implements RoleService {
 
         if (!hasPermission && authentication instanceof JwtAuthenticationToken jwtAuthentication) {
             hasPermission = hasRoleInJwtClaims(jwtAuthentication.getTokenAttributes(), "USER_DELETE");
+        }
+
+        if (!hasPermission && authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+            hasPermission = userRepository.findByKeycloakUid(jwtAuthentication.getName())
+                    .map(user -> user.getRoles().stream()
+                            .flatMap(role -> role.getPermissions().stream())
+                            .anyMatch(permission -> permission.getPermissionName().equals("USER_DELETE")))
+                    .orElse(false);
         }
 
         if (!hasPermission) {

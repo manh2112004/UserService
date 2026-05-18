@@ -14,6 +14,7 @@ public interface RoleService {
     CompletableFuture<String> processCreatePermission(CreatePermissionRequest request);
     String createPermissionInKeycloak(String name, String description);
     String createRoleInKeycloak(CreateRoleCommand command);
+    void deleteRoleInKeycloak(String roleId);
     CompletableFuture<String> assignPermissionsToRole(AssignPermissionToRoleRequest request);
     void assignPermissionsToRole(String roleId, List<String> permissionIds);
     CompletableFuture<String> deleteRole(String roleId);

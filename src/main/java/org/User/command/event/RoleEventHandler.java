@@ -60,4 +60,19 @@ public class RoleEventHandler {
             }
         });
     }
+
+    @EventHandler
+    @Transactional
+    public void on(RoleDeletedEvent event) {
+        roleRepository.findById(event.getRoleId()).ifPresent(role -> {
+            userRepository.findAll().forEach(user -> {
+                if (user.getRoles().removeIf(existingRole -> existingRole.getId().equals(event.getRoleId()))) {
+                    userRepository.save(user);
+                }
+            });
+
+            role.getPermissions().clear();
+            roleRepository.delete(role);
+        });
+    }
 }
