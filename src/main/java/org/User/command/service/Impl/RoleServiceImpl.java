@@ -21,10 +21,19 @@ import org.keycloak.admin.client.resource.RolesResource;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -205,5 +214,92 @@ public class RoleServiceImpl implements RoleService {
         if (!composites.isEmpty()) {
             roleResource.addComposites(composites);
         }
+    }
+
+    @Override
+    @Transactional
+    public CompletableFuture<String> deleteRole(String roleId) {
+        checkDeleteRolePermission();
+
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Role không tồn tại"
+                ));
+
+        String clientUuid = keycloak.realm(realm)
+                .clients()
+                .findByClientId(clientId)
+                .get(0)
+                .getId();
+
+        try {
+            keycloak.realm(realm)
+                    .clients()
+                    .get(clientUuid)
+                    .roles()
+                    .get(role.getRoleName())
+                    .remove();
+        } catch (NotFoundException ignored) {
+            // Role đã không còn trên Keycloak, vẫn tiếp tục dọn dữ liệu trong DB.
+        }
+
+        userRepository.findAll().forEach(user -> {
+            if (user.getRoles().removeIf(existingRole -> existingRole.getId().equals(roleId))) {
+                userRepository.save(user);
+            }
+        });
+
+        role.getPermissions().clear();
+        roleRepository.delete(role);
+
+        return CompletableFuture.completedFuture("Xóa role thành công");
+    }
+
+    private void checkDeleteRolePermission() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean hasPermission = authentication != null
+                && authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        authority.getAuthority().equals("USER_DELETE")
+                                || authority.getAuthority().equals("ROLE_USER_DELETE")
+                );
+
+        if (!hasPermission && authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+            hasPermission = hasRoleInJwtClaims(jwtAuthentication.getTokenAttributes(), "USER_DELETE");
+        }
+
+        if (!hasPermission) {
+            throw new AccessDeniedException("Bạn không có quyền USER_DELETE để xóa role");
+        }
+    }
+
+    private boolean hasRoleInJwtClaims(Map<String, Object> claims, String roleName) {
+        Object realmAccess = claims.get("realm_access");
+        if (realmAccess instanceof Map<?, ?> realmAccessMap
+                && containsRole(realmAccessMap.get("roles"), roleName)) {
+            return true;
+        }
+
+        Object resourceAccess = claims.get("resource_access");
+        if (!(resourceAccess instanceof Map<?, ?> resourceAccessMap)) {
+            return false;
+        }
+
+        Object clientAccess = resourceAccessMap.get(clientId);
+        if (clientAccess instanceof Map<?, ?> clientAccessMap
+                && containsRole(clientAccessMap.get("roles"), roleName)) {
+            return true;
+        }
+
+        return resourceAccessMap.values().stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .anyMatch(access -> containsRole(access.get("roles"), roleName));
+    }
+
+    private boolean containsRole(Object roles, String roleName) {
+        return roles instanceof Collection<?> roleCollection
+                && roleCollection.stream().anyMatch(roleName::equals);
     }
 }
