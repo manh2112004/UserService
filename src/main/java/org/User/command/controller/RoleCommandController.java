@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.List;
 @RestController
 @RequestMapping("/api/v1")
 public class RoleCommandController {
@@ -39,6 +40,10 @@ public class RoleCommandController {
     @PostMapping("/permissions")
     public CompletableFuture<String> createPermission(@RequestBody CreatePermissionRequest request) {
         return roleService.processCreatePermission(request);
+    }
+    @PostMapping("/permissions/batch")
+    public CompletableFuture<List<String>> createPermissions(@RequestBody CreatePermissionsRequest request) {
+        return roleService.processCreatePermissions(request);
     }
     @PostMapping("/assign-permissions")
     public CompletableFuture<String> assignPermissions(@RequestBody AssignPermissionToRoleRequest request) {

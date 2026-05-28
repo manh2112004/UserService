@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 public interface RoleService {
     CompletableFuture<Object> createRole(CreateRoleRequest request);
     CompletableFuture<String> processCreatePermission(CreatePermissionRequest request);
+    CompletableFuture<List<String>> processCreatePermissions(CreatePermissionsRequest request);
     String createPermissionInKeycloak(String name, String description);
     String createRoleInKeycloak(CreateRoleCommand command);
     void deleteRoleInKeycloak(String roleId);

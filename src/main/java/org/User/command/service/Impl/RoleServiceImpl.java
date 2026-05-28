@@ -3,11 +3,7 @@ package org.User.command.service.Impl;
 import jakarta.ws.rs.NotFoundException;
 import org.User.command.command.*;
 import org.User.command.data.*;
-import org.User.command.model.request.AssignPermissionToRoleRequest;
-import org.User.command.model.request.CreatePermissionRequest;
-import org.User.command.model.request.CreateRoleRequest;
-import org.User.command.model.request.UpdatePermissionRequest;
-import org.User.command.model.request.UpdateRoleRequest;
+import org.User.command.model.request.*;
 import org.User.command.service.RoleService;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.keycloak.admin.client.Keycloak;
@@ -26,7 +22,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -62,14 +60,56 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public CompletableFuture<String> processCreatePermission(CreatePermissionRequest request) {
        // Service chịu trách nhiệm tạo Command từ Request
+        if (request == null || request.getPermissionName() == null || request.getPermissionName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Permission name is required");
+        }
+        String permissionName = request.getPermissionName().trim();
+        if (permissionRepository.existsByPermissionName(permissionName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Permission name already exists: " + permissionName);
+        }
         String tempId = java.util.UUID.randomUUID().toString();
         // 2. Gửi Command kèm theo ID này
         CreatePermissionCommand command = new CreatePermissionCommand(
                 tempId, // Thêm field này vào constructor của Command
-                request.getPermissionName(),
+                permissionName,
                 request.getDescription()
         );
         return commandGateway.send(command);
+    }
+
+    @Override
+    public CompletableFuture<List<String>> processCreatePermissions(CreatePermissionsRequest request) {
+        if (request == null || request.getPermissions() == null || request.getPermissions().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "permissions không được để trống");
+        }
+
+        Set<String> normalizedNames = new HashSet<>();
+        List<CompletableFuture<String>> tasks = new ArrayList<>();
+
+        for (CreatePermissionRequest item : request.getPermissions()) {
+            if (item == null || item.getPermissionName() == null || item.getPermissionName().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mỗi permission phải có permissionName");
+            }
+
+            String permissionName = item.getPermissionName().trim();
+            String normalized = permissionName.toLowerCase(Locale.ROOT);
+            if (!normalizedNames.add(normalized)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trùng permissionName trong request: " + permissionName);
+            }
+            if (permissionRepository.existsByPermissionName(permissionName)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Permission name already exists: " + permissionName);
+            }
+
+            CreatePermissionCommand command = new CreatePermissionCommand(
+                    java.util.UUID.randomUUID().toString(),
+                    permissionName,
+                    item.getDescription()
+            );
+            tasks.add(commandGateway.send(command));
+        }
+
+        CompletableFuture<Void> allDone = CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0]));
+        return allDone.thenApply(v -> tasks.stream().map(CompletableFuture::join).collect(Collectors.toList()));
     }
 
     @Override
