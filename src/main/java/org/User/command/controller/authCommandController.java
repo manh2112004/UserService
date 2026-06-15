@@ -7,13 +7,18 @@ import org.User.command.command.VerifyEmailCommand;
 import org.User.command.model.request.*;
 import org.User.command.model.response.LoginResponseDTO;
 import org.User.command.service.authService;
+import org.User.event.KafkaEvent;
+import org.User.event.KafkaEventProducer;
+import org.User.event.KafkaTopic;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
@@ -23,10 +28,24 @@ public class authCommandController {
     private authService authService;
     @Autowired
     private  CommandGateway commandGateway;
+    @Autowired
+    private KafkaEventProducer kafkaEventProducer;
 
     @PostMapping("/register")
     public CompletableFuture<String> register(@Valid @RequestBody RegisterRequestModel model) {
-        return authService.registerUser(model);
+        return authService.registerUser(model).thenApply(userId -> {
+            kafkaEventProducer.sendEvent(KafkaTopic.USER_EVENTS, KafkaEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .eventType("UserRegisteredEvent")
+                    .userId(userId)
+                    .referenceId(userId)
+                    .referenceType("USER")
+                    .title("Đăng ký tài khoản thành công")
+                    .message("Tài khoản " + model.getEmail() + " đã được tạo thành công.")
+                    .createdAt(LocalDateTime.now())
+                    .build());
+            return userId;
+        });
     }
 
     @PostMapping("/login")
