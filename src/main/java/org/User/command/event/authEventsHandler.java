@@ -27,6 +27,7 @@ public class authEventsHandler {
         userEntity.setEmail(event.getEmail());
         userEntity.setUserType(UserType.valueOf(event.getUserType()));
         userEntity.setKeycloakUid(event.getUserId());
+        userEntity.setActive(true);
         userRepository.save(userEntity);
     }
     @EventHandler

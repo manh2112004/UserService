@@ -19,6 +19,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import org.User.command.data.UserRepository;
+import org.User.command.data.User;
+import java.util.Optional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,9 @@ import java.util.concurrent.CompletableFuture;
 public class authServiceImpl implements authService {
     @Autowired
     private CommandGateway commandGateway;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private Keycloak keycloak;
@@ -51,6 +57,12 @@ public class authServiceImpl implements authService {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(model.getEmail());
         user.setEmail(model.getEmail());
+        
+        // Cung cấp FirstName và LastName mặc định để tránh lỗi 400 Bad Request do chính sách User Profile của Keycloak 22+ yêu cầu
+        String namePrefix = model.getEmail().split("@")[0];
+        user.setFirstName(namePrefix);
+        user.setLastName("User");
+        
         user.setEnabled(true);
         user.setEmailVerified(true);
         user.setRequiredActions(Collections.emptyList());
@@ -58,7 +70,11 @@ public class authServiceImpl implements authService {
         Response response = keycloak.realm(realm).users().create(user);
 
         if (response.getStatus() != 201) {
-            throw new RuntimeException("Lỗi tạo user trên Keycloak, status: " + response.getStatus());
+            String errorEntity = "";
+            try {
+                errorEntity = response.readEntity(String.class);
+            } catch (Exception ignored) {}
+            throw new RuntimeException("Lỗi tạo user trên Keycloak, status: " + response.getStatus() + ", chi tiết: " + errorEntity);
         }
 
         // 2. Lấy Keycloak User ID
@@ -71,6 +87,16 @@ public class authServiceImpl implements authService {
         cred.setTemporary(false);
         keycloak.realm(realm).users().get(keycloakUserId).resetPassword(cred);
 
+        // 3.5. Gán Role tương ứng trực tiếp lên Keycloak dựa trên userType đăng ký
+        try {
+            String roleName = "ROLE_" + model.getUserType(); // "ROLE_CANDIDATE" hoặc "ROLE_RECRUITER"
+            org.keycloak.representations.idm.RoleRepresentation roleRep = keycloak.realm(realm).roles().get(roleName).toRepresentation();
+            keycloak.realm(realm).users().get(keycloakUserId).roles().realmLevel().add(Collections.singletonList(roleRep));
+            System.out.println("Đã tự động gán Realm Role: " + roleName + " cho user: " + model.getEmail());
+        } catch (Exception e) {
+            System.err.println("Không thể gán Realm Role tự động trên Keycloak: " + e.getMessage());
+        }
+
         // 4. Gửi Command sang Axon
         CreateUserCommand command = new CreateUserCommand(
                 keycloakUserId,
@@ -82,6 +108,11 @@ public class authServiceImpl implements authService {
 
     @Override
     public LoginResponseDTO login(LoginRequestModel model) {
+        Optional<User> localUserOpt = userRepository.findByEmail(model.getEmail());
+        if (localUserOpt.isPresent() && !localUserOpt.get().isActive()) {
+            throw new RuntimeException("Tài khoản của bạn đang bị tạm khóa");
+        }
+
         String url = keycloakServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
